@@ -63,7 +63,7 @@ export default function FAQSection() {
 
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-[400px] h-[600px] bg-[#7C3AED]/4 blur-3xl rounded-full" />
+        <div className="absolute top-1/2 right-0 -translate-y-1/2 w-100 h-150 bg-[#7C3AED]/4 blur-3xl rounded-full" />
       </div>
 
       <div className="relative max-w-6xl mx-auto px-6">
@@ -139,7 +139,7 @@ export default function FAQSection() {
 
                   {/* Plus / Minus icon */}
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
                       openIndex === i
                         ? "bg-[#7C3AED] rotate-45"
                         : "bg-gray-100"

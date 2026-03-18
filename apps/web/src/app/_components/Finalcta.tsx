@@ -6,7 +6,7 @@ export default function FinalCTA() {
 
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#7C3AED]/4 via-transparent to-[#84CC16]/4" />
+        <div className="absolute inset-0 bg-linear-to-br from-[#7C3AED]/4 via-transparent to-[#84CC16]/4" />
       </div>
 
       <div className="relative max-w-6xl mx-auto px-6">
@@ -14,9 +14,9 @@ export default function FinalCTA() {
 
           {/* Inner background effects */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-[#7C3AED]/20 blur-3xl rounded-full" />
-            <div className="absolute bottom-0 left-1/4 w-[300px] h-[200px] bg-[#84CC16]/10 blur-3xl rounded-full" />
-            <div className="absolute bottom-0 right-1/4 w-[300px] h-[200px] bg-[#7C3AED]/10 blur-3xl rounded-full" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-175 h-75 bg-[#7C3AED]/20 blur-3xl rounded-full" />
+            <div className="absolute bottom-0 left-1/4 w-75 h-50 bg-[#84CC16]/10 blur-3xl rounded-full" />
+            <div className="absolute bottom-0 right-1/4 w-75 h-50 bg-[#7C3AED]/10 blur-3xl rounded-full" />
             {/* Dot grid */}
             <div
               className="absolute inset-0 opacity-[0.04]"
@@ -63,7 +63,7 @@ export default function FinalCTA() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Link
                 href="/signup"
-                className="flex items-center justify-center gap-2 text-white font-bold text-base px-8 py-4 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#9D5CF6] shadow-xl shadow-purple-900/50 hover:-translate-y-1 hover:shadow-2xl transition-all duration-200 no-underline"
+                className="flex items-center justify-center gap-2 text-white font-bold text-base px-8 py-4 rounded-xl bg-linear-to-r from-[#7C3AED] to-[#9D5CF6] shadow-xl shadow-purple-900/50 hover:-translate-y-1 hover:shadow-2xl transition-all duration-200 no-underline"
                 style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
               >
                 Start For Free Today

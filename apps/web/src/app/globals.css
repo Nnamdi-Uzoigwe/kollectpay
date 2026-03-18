@@ -3,4 +3,5 @@
 
 body {
   font-family: "Inter", "Plus Jakarta Sans", sans-serif;
+  scroll-behavior: smooth;
 }
