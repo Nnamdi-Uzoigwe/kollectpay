@@ -75,7 +75,7 @@ export default function Navbar() {
             Log In
           </Link>
           <Link
-            href="/signup"
+            href="/register"
             className="flex items-center gap-1.5 text-white font-bold text-[15px] px-5 py-2.5 rounded-lg bg-linear-to-r from-[#7C3AED] to-[#9D5CF6] shadow-lg shadow-purple-300/40 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-purple-300/50 transition-all duration-200 no-underline"
             style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
           >
