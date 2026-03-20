@@ -5,7 +5,7 @@ import {
   timestamp,
   doublePrecision,
   pgEnum,
-  uniqueIndex,
+  integer,
 } from "drizzle-orm/pg-core";
 
 // ================================
@@ -29,6 +29,8 @@ export const users = pgTable("users", {
   plan: planEnum("plan").default("STARTER").notNull(),
   isAdmin: boolean("is_admin").default(false).notNull(),
   isVerified: boolean("is_verified").default(false).notNull(),
+  resetToken: text("reset_token"), 
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -91,6 +93,14 @@ export const reminderSettings = pgTable("reminder_settings", {
   debtorId: text("debtor_id").notNull().unique().references(() => debtors.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const usageLogs = pgTable("usage_logs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  month: text("month").notNull(), // format: "2026-03"
+  messagesSent: integer("messages_sent").default(0).notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

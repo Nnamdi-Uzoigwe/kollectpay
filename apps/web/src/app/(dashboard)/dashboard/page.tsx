@@ -53,16 +53,25 @@ export default function DashboardPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [greeting, setGreeting] = useState("Good morning");
+  const [usage, setUsage] = useState<{
+    messagesSent: number;
+    messagesLimit: number;
+    messagesRemaining: number;
+    activeDebtorLimit: number;
+    percentageUsed: number;
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [debtorsRes, messagesRes] = await Promise.all([
+      const [debtorsRes, messagesRes, usageRes] = await Promise.all([
         api.get("/api/debtors"),
         api.get("/api/messages"),
+        api.get("/api/settings/usage"),
       ]);
       setDebtors(debtorsRes.data.data.debtors);
       setMessages(messagesRes.data.data.messages);
+      setUsage(usageRes.data.data.usage);
     } catch {
       // fail silently — show zeros
     } finally {
@@ -104,12 +113,13 @@ export default function DashboardPage() {
     return sentAt >= weekAgo;
   }).length;
 
-  const formatAmount = (amount: number) =>
-    `₦${amount.toLocaleString("en-NG")}`;
+  const formatAmount = (amount: number) => `₦${amount.toLocaleString("en-NG")}`;
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-NG", {
-      day: "numeric", month: "short", year: "numeric",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
 
   const stats = [
@@ -120,7 +130,13 @@ export default function DashboardPage() {
       changePositive: false,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
       iconBg: "bg-red-50 text-red-400",
@@ -133,9 +149,21 @@ export default function DashboardPage() {
       changePositive: overdueCount === 0,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
           <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
       iconBg: "bg-orange-50 text-orange-400",
@@ -148,7 +176,13 @@ export default function DashboardPage() {
       changePositive: recoveredThisMonth > 0,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
       iconBg: "bg-[#84CC16]/10 text-[#65A30D]",
@@ -161,7 +195,13 @@ export default function DashboardPage() {
       changePositive: true,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       ),
       iconBg: "bg-[#7C3AED]/10 text-[#7C3AED]",
@@ -173,7 +213,6 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-
       {/* Greeting */}
       <div className="mb-8">
         <h2
@@ -182,7 +221,10 @@ export default function DashboardPage() {
         >
           {greeting}, {user?.businessName || "there"} 👋
         </h2>
-        <p className="text-gray-400 text-sm mt-1" style={{ fontFamily: "var(--font-inter)" }}>
+        <p
+          className="text-gray-400 text-sm mt-1"
+          style={{ fontFamily: "var(--font-inter)" }}
+        >
           Here's what's happening with your collections today.
         </p>
       </div>
@@ -201,7 +243,9 @@ export default function DashboardPage() {
               >
                 {stat.label}
               </p>
-              <div className={`w-9 h-9 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
+              <div
+                className={`w-9 h-9 rounded-xl ${stat.iconBg} flex items-center justify-center`}
+              >
                 {stat.icon}
               </div>
             </div>
@@ -223,7 +267,6 @@ export default function DashboardPage() {
 
       {/* Main content grid */}
       <div className="grid lg:grid-cols-3 gap-6">
-
         {/* Recent Debtors */}
         <div className="lg:col-span-2 bg-white border border-gray-100 rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -244,14 +287,31 @@ export default function DashboardPage() {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <svg className="animate-spin text-[#7C3AED]" width="28" height="28" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeDashoffset="12" />
+              <svg
+                className="animate-spin text-[#7C3AED]"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray="32"
+                  strokeDashoffset="12"
+                />
               </svg>
             </div>
           ) : recentDebtors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <span className="text-3xl">👤</span>
-              <p className="text-gray-500 font-semibold text-sm" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
+              <p
+                className="text-gray-500 font-semibold text-sm"
+                style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
+              >
                 No debtors yet
               </p>
               <Link
@@ -276,18 +336,30 @@ export default function DashboardPage() {
                     {debtor.name.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-800 font-semibold text-sm truncate" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
+                    <p
+                      className="text-gray-800 font-semibold text-sm truncate"
+                      style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
+                    >
                       {debtor.name}
                     </p>
-                    <p className="text-gray-400 text-xs" style={{ fontFamily: "var(--font-inter)" }}>
+                    <p
+                      className="text-gray-400 text-xs"
+                      style={{ fontFamily: "var(--font-inter)" }}
+                    >
                       {debtor.phone}
                     </p>
                   </div>
                   <div className="text-right hidden sm:block">
-                    <p className="text-gray-900 font-bold text-sm" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
+                    <p
+                      className="text-gray-900 font-bold text-sm"
+                      style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
+                    >
                       {formatAmount(debtor.amount)}
                     </p>
-                    <p className="text-gray-400 text-xs" style={{ fontFamily: "var(--font-inter)" }}>
+                    <p
+                      className="text-gray-400 text-xs"
+                      style={{ fontFamily: "var(--font-inter)" }}
+                    >
                       Due {formatDate(debtor.dueDate)}
                     </p>
                   </div>
@@ -305,17 +377,34 @@ export default function DashboardPage() {
 
         {/* Right column */}
         <div className="flex flex-col gap-6">
-
           {/* Quick actions */}
           <div className="bg-white border border-gray-100 rounded-2xl p-6">
-            <h3 className="font-bold text-gray-900 text-[15px] mb-4" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
+            <h3
+              className="font-bold text-gray-900 text-[15px] mb-4"
+              style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
+            >
               Quick Actions
             </h3>
             <div className="flex flex-col gap-2">
               {[
-                { label: "Add New Debtor", href: "/debtors", icon: "👤", color: "hover:bg-[#7C3AED]/5 hover:border-[#7C3AED]/20" },
-                { label: "View Message Logs", href: "/messages", icon: "📱", color: "hover:bg-blue-50 hover:border-blue-200" },
-                { label: "Upgrade Plan", href: "/billing", icon: "⚡", color: "hover:bg-[#84CC16]/5 hover:border-[#84CC16]/20" },
+                {
+                  label: "Add New Debtor",
+                  href: "/debtors",
+                  icon: "👤",
+                  color: "hover:bg-[#7C3AED]/5 hover:border-[#7C3AED]/20",
+                },
+                {
+                  label: "View Message Logs",
+                  href: "/messages",
+                  icon: "📱",
+                  color: "hover:bg-blue-50 hover:border-blue-200",
+                },
+                {
+                  label: "Upgrade Plan",
+                  href: "/billing",
+                  icon: "⚡",
+                  color: "hover:bg-[#84CC16]/5 hover:border-[#84CC16]/20",
+                },
               ].map((action, i) => (
                 <Link
                   key={i}
@@ -323,11 +412,26 @@ export default function DashboardPage() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 transition-all duration-200 no-underline ${action.color}`}
                 >
                   <span className="text-lg">{action.icon}</span>
-                  <span className="text-gray-700 text-sm font-semibold" style={{ fontFamily: "var(--font-inter)" }}>
+                  <span
+                    className="text-gray-700 text-sm font-semibold"
+                    style={{ fontFamily: "var(--font-inter)" }}
+                  >
                     {action.label}
                   </span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="ml-auto text-gray-300">
-                    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="ml-auto text-gray-300"
+                  >
+                    <path
+                      d="M9 18l6-6-6-6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </Link>
               ))}
@@ -337,58 +441,45 @@ export default function DashboardPage() {
           {/* Plan usage */}
           <div className="bg-[#0F0A1E] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-white text-[15px]" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
+              <h3
+                className="font-bold text-white text-[15px]"
+                style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
+              >
                 Plan Usage
               </h3>
-              <span className="text-[#84CC16] text-xs font-semibold bg-[#84CC16]/10 px-2.5 py-1 rounded-full" style={{ fontFamily: "var(--font-inter)" }}>
+              <span
+                className="text-[#84CC16] text-xs font-semibold bg-[#84CC16]/10 px-2.5 py-1 rounded-full"
+                style={{ fontFamily: "var(--font-inter)" }}
+              >
                 {plan.charAt(0) + plan.slice(1).toLowerCase()}
               </span>
             </div>
 
             {/* Messages quota */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-white/50 text-xs" style={{ fontFamily: "var(--font-inter)" }}>
-                  Messages this week
-                </p>
-                <p className="text-white text-xs font-semibold" style={{ fontFamily: "var(--font-inter)" }}>
-                  {messagesThisWeek} / {limits.messages === Infinity ? "∞" : limits.messages}
-                </p>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-linear-to-r from-[#7C3AED] to-[#84CC16] rounded-full transition-all duration-500"
-                  style={{
-                    width: limits.messages === Infinity
-                      ? "30%"
-                      : `${Math.min((messagesThisWeek / limits.messages) * 100, 100)}%`,
-                  }}
-                />
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-white/50 text-xs">Messages this month</p>
+              <p className="text-white text-xs font-semibold">
+                {usage?.messagesSent || 0} / {usage?.messagesLimit || 100}
+              </p>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  (usage?.percentageUsed || 0) >= 80
+                    ? "bg-red-400"
+                    : "bg-linear-to-r from-[#7C3AED] to-[#84CC16]"
+                }`}
+                style={{ width: `${usage?.percentageUsed || 0}%` }}
+              />
             </div>
 
             {/* Debtors quota */}
-            <div className="mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-white/50 text-xs" style={{ fontFamily: "var(--font-inter)" }}>
-                  Debtors
-                </p>
-                <p className="text-white text-xs font-semibold" style={{ fontFamily: "var(--font-inter)" }}>
-                  {debtors.length} / {limits.debtors === Infinity ? "∞" : limits.debtors}
-                </p>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-linear-to-r from-[#7C3AED] to-[#84CC16] rounded-full"
-                  style={{
-                    width: limits.debtors === Infinity
-                      ? "20%"
-                      : `${Math.min((debtors.length / limits.debtors) * 100, 100)}%`,
-                  }}
-                />
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-white/50 text-xs">Active debtors</p>
+              <p className="text-white text-xs font-semibold">
+                {activeDebtors.length} / {usage?.activeDebtorLimit || 10}
+              </p>
             </div>
-
             {plan !== "PRO" && (
               <Link
                 href="/billing"
@@ -397,7 +488,13 @@ export default function DashboardPage() {
               >
                 Upgrade for More
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 12h14M12 5l7 7-7 7" stroke="#84CC16" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M5 12h14M12 5l7 7-7 7"
+                    stroke="#84CC16"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </Link>
             )}

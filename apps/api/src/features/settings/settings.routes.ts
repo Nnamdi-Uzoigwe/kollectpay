@@ -5,6 +5,7 @@ import { users } from "../../shared/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { getUsageSummary } from "../../shared/services/usage.service";
 
 const router = Router();
 
@@ -111,6 +112,22 @@ router.delete("/account", async (req, res) => {
     await db.delete(users).where(eq(users.id, req.user!.userId));
 
     res.json({ success: true, message: "Account deleted successfully" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get usage summary
+router.get("/usage", async (req, res) => {
+  try {
+    const [user] = await db
+      .select({ plan: users.plan })
+      .from(users)
+      .where(eq(users.id, req.user!.userId))
+      .limit(1);
+
+    const usage = await getUsageSummary(req.user!.userId, user.plan);
+    res.json({ success: true, data: { usage } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

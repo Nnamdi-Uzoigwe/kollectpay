@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import api from "@/shared/lib/axios";
 import AddDebtorModal, { type Debtor } from "@/features/debtors/components/AddDebtorModal";
 
 type FilterStatus = "ALL" | "PENDING" | "OVERDUE" | "PAID";
+
+interface UsageSummary {
+  month: string;
+  messagesSent: number;
+  messagesLimit: number;
+  messagesRemaining: number;
+  activeDebtorLimit: number;
+  percentageUsed: number;
+}
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   OVERDUE: { label: "Overdue", className: "bg-red-100 text-red-600" },
@@ -23,6 +33,7 @@ const avatarColors = [
 
 export default function DebtorsPage() {
   const [debtors, setDebtors] = useState<Debtor[]>([]);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("ALL");
@@ -33,11 +44,21 @@ export default function DebtorsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Get plan from localStorage
+  const storedUser = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("kollectpay_user") || "{}")
+    : {};
+  const plan = storedUser?.plan || "STARTER";
+
   const fetchDebtors = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data } = await api.get("/api/debtors");
-      setDebtors(data.data.debtors);
+      const [debtorsRes, usageRes] = await Promise.all([
+        api.get("/api/debtors"),
+        api.get("/api/settings/usage"),
+      ]);
+      setDebtors(debtorsRes.data.data.debtors);
+      setUsage(usageRes.data.data.usage);
     } catch (err: any) {
       setError("Failed to load debtors. Please refresh.");
     } finally {
@@ -87,12 +108,16 @@ export default function DebtorsPage() {
   };
 
   // Stats
-  const totalOwed = debtors
-    .filter((d) => d.status !== "PAID")
-    .reduce((sum, d) => sum + d.amount, 0);
+  const activeDebtors = debtors.filter((d) => d.status !== "PAID");
+  const totalOwed = activeDebtors.reduce((sum, d) => sum + d.amount, 0);
   const pendingCount = debtors.filter((d) => d.status === "PENDING").length;
   const overdueCount = debtors.filter((d) => d.status === "OVERDUE").length;
   const paidCount = debtors.filter((d) => d.status === "PAID").length;
+
+  // Cap check — only active (non-paid) debtors count toward limit
+  const isDebtorCapReached = usage
+    ? activeDebtors.length >= usage.activeDebtorLimit
+    : false;
 
   // Filter + search
   const filtered = debtors.filter((d) => {
@@ -124,10 +149,10 @@ export default function DebtorsPage() {
       {/* Stats bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Owed", value: formatAmount(totalOwed), color: "text-red-500", bg: "bg-red-50 text-red-400" },
-          { label: "Pending", value: pendingCount.toString(), color: "text-yellow-600", bg: "bg-yellow-50 text-yellow-400" },
-          { label: "Overdue", value: overdueCount.toString(), color: "text-red-600", bg: "bg-red-50 text-red-400" },
-          { label: "Paid", value: paidCount.toString(), color: "text-[#65A30D]", bg: "bg-[#84CC16]/10 text-[#65A30D]" },
+          { label: "Total Owed", value: formatAmount(totalOwed), color: "text-red-500" },
+          { label: "Pending", value: pendingCount.toString(), color: "text-yellow-600" },
+          { label: "Overdue", value: overdueCount.toString(), color: "text-red-600" },
+          { label: "Paid", value: paidCount.toString(), color: "text-[#65A30D]" },
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-gray-100 rounded-2xl px-5 py-4">
             <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1" style={{ fontFamily: "var(--font-inter)" }}>
@@ -139,6 +164,21 @@ export default function DebtorsPage() {
           </div>
         ))}
       </div>
+
+      {/* Cap warning banner */}
+      {isDebtorCapReached && (
+        <div className="flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 mb-4">
+          <span className="text-xl shrink-0">⚠️</span>
+          <p className="text-orange-700 text-sm leading-relaxed" style={{ fontFamily: "var(--font-inter)" }}>
+            You've reached your <strong>{plan.charAt(0) + plan.slice(1).toLowerCase()} plan</strong> limit of{" "}
+            <strong>{usage?.activeDebtorLimit} active debtors</strong>.{" "}
+            <Link href="/billing" className="font-bold underline text-orange-700 hover:text-orange-800">
+              Upgrade your plan
+            </Link>{" "}
+            or mark a debtor as paid to add more.
+          </p>
+        </div>
+      )}
 
       {/* Main card */}
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
@@ -180,13 +220,28 @@ export default function DebtorsPage() {
                 style={{ fontFamily: "var(--font-inter)" }}
               />
             </div>
+
             <button
-              onClick={() => { setEditDebtor(null); setIsModalOpen(true); }}
-              className="flex items-center gap-1.5 bg-linear-to-r from-[#7C3AED] to-[#9D5CF6] text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow-md shadow-purple-300/30 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 border-none cursor-pointer whitespace-nowrap"
+              onClick={() => {
+                if (isDebtorCapReached) return;
+                setEditDebtor(null);
+                setIsModalOpen(true);
+              }}
+              disabled={isDebtorCapReached}
+              title={
+                isDebtorCapReached
+                  ? `Upgrade to add more than ${usage?.activeDebtorLimit} active debtors`
+                  : "Add a new debtor"
+              }
+              className={`flex items-center gap-1.5 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all duration-200 border-none whitespace-nowrap ${
+                isDebtorCapReached
+                  ? "bg-gray-300 cursor-not-allowed opacity-60"
+                  : "bg-linear-to-r from-[#7C3AED] to-[#9D5CF6] shadow-md shadow-purple-300/30 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer"
+              }`}
               style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M12 5v14M5 12h14" stroke="#84CC16" strokeWidth="2.5" strokeLinecap="round" />
+                <path d="M12 5v14M5 12h14" stroke={isDebtorCapReached ? "#9CA3AF" : "#84CC16"} strokeWidth="2.5" strokeLinecap="round" />
               </svg>
               Add Debtor
             </button>
@@ -216,9 +271,11 @@ export default function DebtorsPage() {
               {search ? "No debtors found" : "No debtors yet"}
             </p>
             <p className="text-gray-400 text-sm text-center max-w-xs" style={{ fontFamily: "var(--font-inter)" }}>
-              {search ? "Try a different name or phone number" : "Add your first debtor and KollectPay will start sending reminders automatically"}
+              {search
+                ? "Try a different name or phone number"
+                : "Add your first debtor and KollectPay will start sending reminders automatically"}
             </p>
-            {!search && (
+            {!search && !isDebtorCapReached && (
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="mt-2 flex items-center gap-2 bg-linear-to-r from-[#7C3AED] to-[#9D5CF6] text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-md shadow-purple-300/30 border-none cursor-pointer hover:-translate-y-0.5 transition-all"
@@ -251,7 +308,6 @@ export default function DebtorsPage() {
                     const { initials, color } = getAvatar(debtor.name, i);
                     return (
                       <tr key={debtor.id} className="hover:bg-gray-50/50 transition-colors duration-150">
-                        {/* Name */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 rounded-full ${color} flex items-center justify-center text-xs font-bold shrink-0`} style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
@@ -269,36 +325,26 @@ export default function DebtorsPage() {
                             </div>
                           </div>
                         </td>
-
-                        {/* Phone */}
                         <td className="px-6 py-4">
                           <p className="text-gray-600 text-sm" style={{ fontFamily: "var(--font-inter)" }}>
                             {debtor.phone}
                           </p>
                         </td>
-
-                        {/* Amount */}
                         <td className="px-6 py-4">
                           <p className="text-gray-900 font-bold text-sm" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
                             {formatAmount(debtor.amount)}
                           </p>
                         </td>
-
-                        {/* Due Date */}
                         <td className="px-6 py-4">
                           <p className="text-gray-600 text-sm" style={{ fontFamily: "var(--font-inter)" }}>
                             {formatDate(debtor.dueDate)}
                           </p>
                         </td>
-
-                        {/* Status */}
                         <td className="px-6 py-4">
                           <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusConfig[debtor.status].className}`} style={{ fontFamily: "var(--font-inter)" }}>
                             {statusConfig[debtor.status].label}
                           </span>
                         </td>
-
-                        {/* Actions */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             {debtor.status !== "PAID" && (
@@ -320,7 +366,6 @@ export default function DebtorsPage() {
                                 Paid
                               </button>
                             )}
-
                             <button
                               onClick={() => handleEdit(debtor)}
                               className="text-gray-400 hover:text-[#7C3AED] bg-gray-100 hover:bg-[#7C3AED]/10 p-1.5 rounded-lg transition-all border-none cursor-pointer"
@@ -331,7 +376,6 @@ export default function DebtorsPage() {
                                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             </button>
-
                             {confirmDeleteId === debtor.id ? (
                               <div className="flex items-center gap-1">
                                 <button
@@ -395,7 +439,6 @@ export default function DebtorsPage() {
                         {statusConfig[debtor.status].label}
                       </span>
                     </div>
-
                     <div className="flex items-center justify-between mt-3 ml-13">
                       <div>
                         <p className="text-gray-900 font-bold text-base" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>

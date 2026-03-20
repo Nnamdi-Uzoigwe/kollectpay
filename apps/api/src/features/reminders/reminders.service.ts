@@ -3,12 +3,13 @@ import { debtors, messages, reminderSettings, users } from "../../shared/db/sche
 import { eq, and, ne } from "drizzle-orm";
 import { sendSMS } from "../../notifications/sms.service";
 import { getSMSTemplate } from "../../notifications/templates";
+import { canSendMessage, incrementMessageCount } from "../../shared/services/usage.service";
+
 
 export const processReminders = async () => {
   console.log("⏰ Running reminder scheduler...");
 
   try {
-    // Get all active reminder settings for non-paid debtors
     const activeReminders = await db
       .select({
         setting: reminderSettings,
@@ -28,9 +29,15 @@ export const processReminders = async () => {
     console.log(`Found ${activeReminders.length} active reminders to process`);
 
     for (const { setting, debtor, user } of activeReminders) {
-      // Check if it's time to send based on frequency
       const shouldSend = checkFrequency(setting.lastSentAt, setting.frequency);
       if (!shouldSend) continue;
+
+      // ← Check monthly message cap before sending
+      const allowed = await canSendMessage(user.id, user.plan);
+      if (!allowed) {
+        console.log(`⏸ Skipping ${debtor.name} — ${user.businessName} has exhausted monthly message quota`);
+        continue;
+      }
 
       const reminderCount = parseInt(setting.reminderCount) + 1;
 
@@ -44,7 +51,6 @@ export const processReminders = async () => {
         reminderCount
       );
 
-      // Send SMS
       const result = await sendSMS({ to: debtor.phone, message });
 
       // Log the message
@@ -55,6 +61,11 @@ export const processReminders = async () => {
         userId: user.id,
         debtorId: debtor.id,
       });
+
+      // ← Increment usage count only if sent successfully
+      if (result.success) {
+        await incrementMessageCount(user.id);
+      }
 
       // Update reminder settings
       await db
