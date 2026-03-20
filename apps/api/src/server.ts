@@ -42,3 +42,15 @@ app.get("/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// Keep alive — prevents Render free tier from sleeping
+if (process.env.NODE_ENV === "production" && process.env.RENDER_URL) {
+  setInterval(async () => {
+    try {
+      await fetch(`${process.env.RENDER_URL}/health`);
+      console.log("💓 Keep-alive ping sent");
+    } catch (e) {
+      console.log("Keep-alive ping failed");
+    }
+  }, 10 * 60 * 1000);
+}
